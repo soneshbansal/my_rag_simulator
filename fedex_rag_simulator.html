@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>FedEx RAG Lab — Interactive Simulator</title>
+<style>
+  :root{
+    --fedex-purple:#4d148c; --fedex-orange:#ff6600; --ink:#20152b;
+    --muted:#6c6475; --line:#e5deed; --paper:#fff; --wash:#f7f4fa;
+    --green:#16845b; --red:#c43d42; --shadow:0 14px 40px rgba(47,20,76,.10);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--wash);color:var(--ink);font:15px/1.5 Inter,Segoe UI,Arial,sans-serif}
+  header{background:var(--fedex-purple);color:white;padding:24px max(22px,calc((100% - 1200px)/2));position:relative;overflow:hidden}
+  header:after{content:"";position:absolute;right:-40px;top:-80px;width:280px;height:280px;border:34px solid rgba(255,102,0,.9);border-radius:50%;opacity:.9}
+  .brand{font-size:13px;font-weight:900;letter-spacing:.12em;text-transform:uppercase}
+  .brand span{color:#ff9b45}
+  h1{font-size:clamp(28px,4vw,42px);line-height:1.1;margin:12px 0 10px;max-width:760px}
+  header p{max-width:720px;margin:0;color:#eee5f8}
+  main{max-width:1200px;margin:24px auto;padding:0 18px 48px}
+  .topline{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-bottom:16px}
+  .pill{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line);background:#fff;border-radius:999px;padding:7px 12px;font-size:12px;font-weight:800;color:var(--fedex-purple)}
+  .dot{width:8px;height:8px;background:var(--fedex-orange);border-radius:50%}
+  .layout{display:grid;grid-template-columns:300px minmax(0,1fr);gap:18px;align-items:start}
+  .panel{background:var(--paper);border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow);overflow:hidden}
+  .panel-head{padding:17px 19px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:10px}
+  .panel-head h2,.panel-head h3{font-size:16px;margin:0}
+  .panel-body{padding:18px}
+  .eyebrow{color:var(--fedex-orange);font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.12em}
+  label{display:block;font-size:12px;font-weight:800;color:#4f4658;margin:14px 0 6px}
+  textarea,input,select{width:100%;font:inherit;border:1px solid #d8cfe3;border-radius:10px;padding:11px 12px;background:#fff;color:var(--ink);outline:none}
+  textarea:focus,input:focus,select:focus{border-color:var(--fedex-purple);box-shadow:0 0 0 3px #4d148c18}
+  textarea{resize:vertical;min-height:96px}
+  .btn{border:0;border-radius:10px;background:var(--fedex-purple);color:white;font-weight:800;padding:11px 14px;cursor:pointer;transition:.15s;display:inline-flex;align-items:center;justify-content:center;gap:8px}
+  .btn:hover{filter:brightness(1.1);transform:translateY(-1px)}
+  .btn.orange{background:var(--fedex-orange);color:#24142d}
+  .btn.ghost{background:white;color:var(--fedex-purple);border:1px solid var(--line)}
+  .btn:disabled{opacity:.45;cursor:not-allowed;transform:none}
+  .actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+  .hint{font-size:12px;color:var(--muted);margin:8px 0 0}
+  .sample{background:#fff7ef;border:1px solid #ffe0c5;border-radius:12px;padding:12px;margin-top:14px;font-size:12px}
+  .sample strong{color:var(--fedex-purple)}
+  .pipeline{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;padding:16px}
+  .step{position:relative;border:1px solid var(--line);border-radius:13px;padding:13px 12px;min-height:104px;background:#fff;cursor:pointer;text-align:left;color:inherit}
+  .step:hover{border-color:#b7a2d1}
+  .step.active{border:2px solid var(--fedex-orange);background:#fff8f2;padding:12px 11px}
+  .step.done .num{background:var(--green)}
+  .num{width:25px;height:25px;border-radius:8px;background:var(--fedex-purple);color:#fff;display:grid;place-items:center;font-size:12px;font-weight:900;margin-bottom:9px}
+  .step strong{display:block;font-size:12px;line-height:1.25}
+  .step small{display:block;color:var(--muted);font-size:10px;margin-top:5px;line-height:1.35}
+  .stage{margin:0 16px 16px;border:1px solid var(--line);border-radius:15px;overflow:hidden}
+  .stage-title{background:#fbf9fd;padding:16px 18px;border-bottom:1px solid var(--line)}
+  .stage-title h2{font-size:20px;margin:4px 0}
+  .stage-title p{margin:0;color:var(--muted);font-size:13px}
+  .stage-content{padding:18px}
+  .stage-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:15px}
+  .mini-card{border:1px solid var(--line);border-radius:12px;padding:13px;min-width:0}
+  .mini-card h3{font-size:13px;margin:0 0 8px}
+  .mini-card p{font-size:12px;color:var(--muted);margin:0}
+  .chunk-list{display:grid;gap:8px;margin-top:10px}
+  .chunk{border:1px solid #e5deed;border-left:4px solid var(--fedex-purple);border-radius:9px;padding:10px;background:#fff;font-size:12px}
+  .chunk.selected{border-left-color:var(--fedex-orange);background:#fff8f2}
+  .chunk .meta{display:flex;justify-content:space-between;gap:8px;color:var(--muted);font-size:10px;margin-bottom:5px}
+  .tag{display:inline-block;padding:3px 7px;border-radius:999px;background:#f0e8fa;color:var(--fedex-purple);font-size:10px;font-weight:900}
+  .tag.orange{background:#ffeadb;color:#9d4100}
+  .vector{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:10px;color:#4e3b65;background:#f6f2fa;padding:8px;border-radius:7px;overflow-wrap:anywhere;margin-top:8px}
+  .metric-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0}
+  .metric{background:#f8f5fb;border-radius:10px;padding:10px}
+  .metric strong{display:block;color:var(--fedex-purple);font-size:20px}
+  .metric span{font-size:10px;color:var(--muted)}
+  .notice{padding:11px 12px;border-radius:10px;background:#f2f9f5;border:1px solid #ccebd9;color:#235c43;font-size:12px;margin-top:10px}
+  .notice.warn{background:#fff8ed;border-color:#ffe0bd;color:#7b4a13}
+  .answer{background:#fbf9fd;border:1px solid var(--line);border-radius:12px;padding:14px;font-size:13px;white-space:pre-wrap}
+  .source-list{display:grid;gap:7px;margin-top:10px}
+  .source{display:flex;gap:9px;align-items:flex-start;font-size:12px}
+  .source b{color:var(--fedex-purple);min-width:52px}
+  .footer-note{font-size:11px;color:var(--muted);margin:16px 2px}
+  .stage-nav{display:flex;justify-content:space-between;gap:10px;margin-top:16px}
+  .hidden{display:none!important}
+  .progress-track{height:5px;background:#eae3f1;border-radius:10px;overflow:hidden;margin:0 16px 16px}
+  .progress-fill{height:100%;width:0;background:var(--fedex-orange);transition:width .25s}
+  @media(max-width:900px){.layout{grid-template-columns:1fr}.pipeline{grid-template-columns:repeat(3,minmax(0,1fr))}}
+  @media(max-width:560px){header{padding:22px 18px}.pipeline{grid-template-columns:repeat(2,minmax(0,1fr))}.stage-grid{grid-template-columns:1fr}.metric-row{grid-template-columns:1fr 1fr 1fr}.panel-body{padding:14px}.stage{margin:0 10px 10px}}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">Fed<span>Ex</span> · AI Learning Lab</div>
+  <h1>RAG Simulator</h1>
+  <p>Follow a question from raw documents to a grounded LLM answer. Explore each stage, inspect chunks and vectors, and see what retrieval actually passes to the model.</p>
+</header>
+<main>
+  <div class="topline">
+    <div class="pill"><span class="dot"></span> Interactive learning mode · Example data only</div>
+    <div class="pill" id="progressLabel">0 of 6 stages explored</div>
+  </div>
+  <div class="layout">
+    <aside class="panel">
+      <div class="panel-head"><h2>01 / Configure the run</h2></div>
+      <div class="panel-body">
+        <div class="eyebrow">Knowledge base</div>
+        <label for="docs">Source documents</label>
+        <textarea id="docs">Tirumala senior citizen darshan is available during designated slots. Visitors should check the official TTD website for current eligibility, reporting time, required ID, and availability.
+
+For temple visits, choose accommodation with clear cancellation terms, verified reviews, accessible entry, and a reachable support contact. Confirm local transport pickup details and vehicle/operator information before travel.
+
+Temple festival dates, darshan rules, queue arrangements, and transport conditions can change. Always verify current details with official temple authorities before making a journey.
+
+For a comfortable pilgrimage with older adults, plan rest breaks, carry prescribed medicines, keep emergency contacts accessible, and avoid tight transfers between temples.</textarea>
+        <label for="query">User query</label>
+        <textarea id="query">How can I plan a safe Tirumala visit for senior citizens, including darshan and accommodation?</textarea>
+        <label for="topk">Chunks to retrieve (top-k)</label>
+        <select id="topk"><option value="2">Top 2 chunks</option><option value="3" selected>Top 3 chunks</option><option value="4">Top 4 chunks</option></select>
+        <div class="actions">
+          <button class="btn orange" id="runBtn">▶ Run RAG</button>
+          <button class="btn ghost" id="resetBtn">Reset</button>
+        </div>
+        <p class="hint">Edit the documents or query, then run again. This is a simplified local simulation—not a real embedding model or external LLM.</p>
+        <div class="sample"><strong>Try this:</strong> change the query to “What should I check before booking local transport?” and run the pipeline again.</div>
+      </div>
+    </aside>
+
+    <section class="panel">
+      <div class="panel-head"><h2>02 / Pipeline explorer</h2><span class="tag" id="stageCounter">Stage 1 of 6</span></div>
+      <div class="pipeline" id="pipeline">
+        <button class="step active" data-step="0"><span class="num">1</span><strong>Ingestion & chunking</strong><small>Split text into meaningful pieces</small></button>
+        <button class="step" data-step="1"><span class="num">2</span><strong>Embeddings</strong><small>Represent chunks as vectors</small></button>
+        <button class="step" data-step="2"><span class="num">3</span><strong>Index & store</strong><small>Save vectors, text and metadata</small></button>
+        <button class="step" data-step="3"><span class="num">4</span><strong>Retrieve</strong><small>Find query-relevant chunks</small></button>
+        <button class="step" data-step="4"><span class="num">5</span><strong>Augment context</strong><small>Give retrieved text to the LLM</small></button>
+        <button class="step" data-step="5"><span class="num">6</span><strong>Generate answer</strong><small>Write a response from context</small></button>
+      </div>
+      <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+      <div class="stage">
+        <div class="stage-title">
+          <div class="eyebrow" id="stageEyebrow">Stage 1 · Prepare the knowledge</div>
+          <h2 id="stageTitle">Ingestion & chunking</h2>
+          <p id="stageDescription">Documents are cleaned and split into smaller sections that can be retrieved independently.</p>
+        </div>
+        <div class="stage-content" id="stageContent"></div>
+      </div>
+    </section>
+  </div>
+  <p class="footer-note">Learning note: production RAG can include overlap-aware chunking, real embedding models, vector databases, hybrid search, metadata filters, reranking, citations, access controls, and freshness checks. This simulator uses simple keyword scoring and illustrative vectors to make the stages visible.</p>
+</main>
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const stageNames = [
+    ["Prepare the knowledge","Ingestion & chunking","Documents are cleaned and split into smaller sections that can be retrieved independently."],
+    ["Represent meaning numerically","Embedding generation","An embedding model maps each chunk into a numeric vector so semantic similarity can be searched."],
+    ["Make chunks searchable","Index & storage","The index stores vectors alongside the original text and metadata such as source and chunk ID."],
+    ["Find useful evidence","Retrieval","The query is compared with indexed content; the highest-scoring chunks are selected."],
+    ["Supply context to the model","Augmentation","Retrieved text is assembled with the user question into the context sent to the LLM."],
+    ["Respond to the user","Generation","The LLM uses the question and supplied context to draft a grounded response."]
+  ];
+  let state = {step:0, chunks:[], explored:new Set(), retrieved:[], context:"", answer:""};
+  const tokenize = s => (s.toLowerCase().match(/[a-z0-9]+/g) || []).filter(w => !["the","and","for","with","that","this","from","into","are","can","how","what","should","your","visit","plan"].includes(w));
+  function makeChunks(text) {
+    const paras = text.split(/\n\s*\n|(?<=[.!?])\s+(?=[A-Z])/).map(s=>s.trim()).filter(Boolean);
+    const out=[];
+    paras.forEach((p,i)=>{
+      // Keep each paragraph as a chunk, splitting unusually long paragraphs into sentence groups.
+      const sentences=p.match(/[^.!?]+[.!?]?/g)||[p];
+      let group="";
+      sentences.forEach(sentence=>{
+        const next=(group+" "+sentence.trim()).trim();
+        if(next.length>260 && group){out.push(group);group=sentence.trim()}else group=next;
+      });
+      if(group) out.push(group);
+    });
+    return out.map((text,i)=>({id:"C"+String(i+1).padStart(2,"0"),text,source:"Source document 1",timestamp:"Imported now",terms:[...new Set(tokenize(text))],vector:null,score:0}));
+  }
+  function hashVector(text) {
+    // Illustrative deterministic feature vector; not a true semantic embedding.
+    const v=Array(8).fill(0);
+    tokenize(text).forEach((w,i)=>{
+      let h=0; for(let j=0;j<w.length;j++) h=(h*31+w.charCodeAt(j))>>>0;
+      const idx=h%v.length; v[idx]+=1+(w.length%3)*.2;
+    });
+    const norm=Math.sqrt(v.reduce((a,b)=>a+b*b,0))||1;
+    return v.map(n=>+(n/norm).toFixed(3));
+  }
+  function similarity(a,b){
+    const A=new Set(tokenize(a)), B=new Set(tokenize(b));
+    if(!A.size||!B.size)return 0;
+    let common=0; A.forEach(w=>{if(B.has(w))common++});
+    // Dice-like keyword score used in place of real vector similarity.
+    return common*2/(A.size+B.size);
+  }
+  function prepare(){
+    state.chunks=makeChunks($("docs").value);
+    state.chunks.forEach(c=>c.vector=hashVector(c.text));
+    const q=$("query").value.trim();
+    state.retrieved=state.chunks.map(c=>({...c,score:similarity(q,c.text)}))
+      .sort((a,b)=>b.score-a.score).slice(0,Number($("topk").value));
+    state.context=state.retrieved.filter(c=>c.score>0).map(c=>`[${c.id} | ${c.source}]\n${c.text}`).join("\n\n");
+    state.answer=composeAnswer(q,state.retrieved.filter(c=>c.score>0));
+    state.explored=new Set();
+    render();
+  }
+  function composeAnswer(q,items){
+    if(!items.length) return "I couldn't find sufficiently relevant information in the retrieved chunks. Try rephrasing the question or adding better source documents. A real RAG system should avoid inventing unsupported details.";
+    const text=items.map(x=>x.text).join(" ");
+    const bits=[];
+    if(/senior|older|elder|darshan|tirumala/i.test(q)){
+      const t=items.find(x=>/senior|darshan|tirumala/i.test(x.text));
+      if(t) bits.push("Darshan: "+t.text);
+    }
+    if(/accommodation|hotel|stay|booking|safe|safety/i.test(q)){
+      const t=items.find(x=>/accommodation|reviews|accessible|cancellation/i.test(x.text));
+      if(t) bits.push("Accommodation and safety: "+t.text);
+    }
+    if(/transport|vehicle|travel|journey/i.test(q)){
+      const t=items.find(x=>/transport|pickup|vehicle|operator/i.test(x.text));
+      if(t) bits.push("Transport: "+t.text);
+    }
+    if(!bits.length) bits.push(text);
+    return bits.join("\n\n")+"\n\nImportant: rules and availability can change. Verify current details with the official temple authority before booking.";
+  }
+  function escapeHtml(s){return s.replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
+  function chunkCards(chunks, showVector=false, scores=false){
+    if(!chunks.length)return '<p class="hint">No chunks available yet. Click Run RAG.</p>';
+    return '<div class="chunk-list">'+chunks.map(c=>`<div class="chunk ${scores&&c.score>0?'selected':''}">
+      <div class="meta"><b>${c.id}</b><span>${scores?'Keyword relevance: '+Math.round(c.score*100)+'%':c.source}</span></div>
+      ${escapeHtml(c.text)}
+      ${showVector?`<div class="vector">Illustrative vector: [${c.vector.join(", ")}]</div>`:""}
+    </div>`).join("")+'</div>';
+  }
+  function render(){
+    const i=state.step, info=stageNames[i];
+    $("stageEyebrow").textContent=`Stage ${i+1} · ${info[0]}`;
+    $("stageTitle").textContent=info[1];
+    $("stageDescription").textContent=info[2];
+    $("stageCounter").textContent=`Stage ${i+1} of 6`;
+    $("progressFill").style.width=((i+1)/6*100)+"%";
+    document.querySelectorAll(".step").forEach((el,n)=>{
+      el.classList.toggle("active",n===i);
+      el.classList.toggle("done",state.explored.has(n));
+      el.querySelector(".num").textContent=state.explored.has(n)?"✓":n+1;
+    });
+    $("progressLabel").textContent=`${state.explored.size} of 6 stages explored`;
+    const count=state.chunks.length;
+    let html="";
+    if(i===0){
+      html=`<div class="stage-grid">
+        <div class="mini-card"><h3>What enters the pipeline?</h3><p>Raw source text. In a production system, ingestion may also extract PDFs, web pages, tables, or files and attach source metadata.</p>
+          <div class="metric-row"><div class="metric"><strong>${count}</strong><span>chunks created</span></div><div class="metric"><strong>${$("docs").value.length}</strong><span>characters</span></div><div class="metric"><strong>1</strong><span>source text area</span></div></div>
+          <div class="notice">Chunking makes long documents easier to search and lets the system retrieve only the most relevant sections.</div>
+        </div>
+        <div class="mini-card"><h3>Chunks created</h3><p>Each chunk can be stored with an ID, source, timestamp, and other metadata.</p>${chunkCards(state.chunks.slice(0,5))}${count>5?`<p class="hint">Showing first 5 of ${count} chunks.</p>`:""}</div>
+      </div>`;
+    } else if(i===1){
+      html=`<div class="stage-grid">
+        <div class="mini-card"><h3>Text → vector</h3><p>An embedding model converts text into a list of numbers. Similar meanings should land near each other in a learned vector space.</p>
+          <div class="vector">Query: ${escapeHtml($("query").value)}<br>Illustrative vector: [${hashVector($("query").value).join(", ")}]</div>
+          <div class="notice warn">Teaching simplification: these are hash-based illustrative vectors, not real AI embeddings. The retrieval score in this demo uses keyword overlap.</div>
+        </div>
+        <div class="mini-card"><h3>Chunk embeddings</h3><p>Each chunk gets its own vector representation.</p>${chunkCards(state.chunks.slice(0,4),true)}${count>4?'<p class="hint">Showing first 4 vectors.</p>':''}</div>
+      </div>`;
+    } else if(i===2){
+      html=`<div class="stage-grid">
+        <div class="mini-card"><h3>What the index keeps</h3><div class="source-list">
+          <div class="source"><b>Vector</b><span>Numerical representation used for similarity search.</span></div>
+          <div class="source"><b>Text</b><span>The original chunk, or a pointer to where it lives.</span></div>
+          <div class="source"><b>Metadata</b><span>Chunk ID, source, timestamp, page number, access rules, and other filters.</span></div>
+        </div><div class="notice">A vector database is a searchable index; it does not write the final answer.</div></div>
+        <div class="mini-card"><h3>Indexed records</h3>${chunkCards(state.chunks.slice(0,5),true)}${count>5?'<p class="hint">Showing first 5 indexed records.</p>':''}</div>
+      </div>`;
+    } else if(i===3){
+      const matches=state.retrieved;
+      html=`<div class="stage-grid">
+        <div class="mini-card"><h3>Query → search</h3><p>The query is usually embedded using the same embedding model, then compared with indexed vectors. This demo substitutes simple word-overlap scoring.</p>
+          <div class="vector">Query: ${escapeHtml($("query").value)}<br>Query tokens: ${escapeHtml(tokenize($("query").value).join(", ")||"(none)")}</div>
+          <div class="metric-row"><div class="metric"><strong>${matches.length}</strong><span>top-k requested</span></div><div class="metric"><strong>${matches.filter(x=>x.score>0).length}</strong><span>non-zero matches</span></div><div class="metric"><strong>${matches[0]?Math.round(matches[0].score*100):0}%</strong><span>top keyword score</span></div></div>
+        </div>
+        <div class="mini-card"><h3>Retrieved top-k chunks</h3><p>Orange-highlighted chunks have at least one keyword in common with the query.</p>${chunkCards(matches,false,true)}</div>
+      </div><div class="notice warn">Retrieval can miss useful evidence or return weak matches. Real systems may use hybrid search, metadata filters, and a reranker to improve relevance.</div>`;
+    } else if(i===4){
+      html=`<div class="mini-card"><h3>Prompt context sent to the LLM</h3><p>The system combines the question with retrieved text. The model can only use this supplied evidence if it is present in the prompt/context.</p>
+        <label>Illustrative augmented prompt</label>
+        <div class="answer"><b>System instruction:</b> Answer using the provided context. If the context does not contain the answer, say what is missing. Do not invent current temple rules.<br><br><b>User question:</b> ${escapeHtml($("query").value)}<br><br><b>Retrieved context:</b><br>${escapeHtml(state.context||"No relevant chunks were retrieved.")}</div>
+        <div class="source-list">${state.retrieved.filter(x=>x.score>0).map(x=>`<div class="source"><b>${x.id}</b><span>${escapeHtml(x.source)} · included in context</span></div>`).join("")||'<p class="hint">No relevant retrieved chunks were included.</p>'}</div>
+        <div class="notice">This is the “A” in RAG: Retrieval-Augmented Generation. Retrieved content augments the model's context; it does not retrain the model.</div>
+      </div>`;
+    } else {
+      html=`<div class="stage-grid">
+        <div class="mini-card"><h3>Generated answer</h3><p>A real LLM would write natural language based on the query and context. This simulator uses simple rules to create an illustrative answer.</p><div class="answer" style="margin-top:10px">${escapeHtml(state.answer)}</div></div>
+        <div class="mini-card"><h3>Traceability</h3><p>Inspect which retrieved chunks could support the response.</p>
+          ${state.retrieved.filter(x=>x.score>0).map(x=>`<div class="chunk selected"><div class="meta"><b>${x.id}</b><span>Score ${Math.round(x.score*100)}%</span></div>${escapeHtml(x.text)}</div>`).join("")||'<div class="notice warn">No relevant chunks found. A robust system should avoid making unsupported claims.</div>'}
+          <div class="notice">Good RAG answers should be relevant, supported by retrieved evidence, and cautious when information is missing or outdated.</div>
+        </div>
+      </div>`;
+    }
+    html+=`<div class="stage-nav"><button class="btn ghost" id="prevBtn" ${i===0?'disabled':''}>← Previous</button><button class="btn ${i===5?'orange':''}" id="nextBtn">${i===5?'↻ Start again':'Next stage →'}</button></div>`;
+    $("stageContent").innerHTML=html;
+    $("prevBtn").addEventListener("click",()=>go(Math.max(0,state.step-1)));
+    $("nextBtn").addEventListener("click",()=>go(state.step===5?0:state.step+1));
+  }
+  function go(i){state.explored.add(state.step);state.step=i;render();}
+  document.querySelectorAll(".step").forEach(el=>el.addEventListener("click",()=>go(Number(el.dataset.step))));
+  $("runBtn").addEventListener("click",()=>{state.step=0;prepare();});
+  $("resetBtn").addEventListener("click",()=>{
+    $("docs").value="Tirumala senior citizen darshan is available during designated slots. Visitors should check the official TTD website for current eligibility, reporting time, required ID, and availability.\n\nFor temple visits, choose accommodation with clear cancellation terms, verified reviews, accessible entry, and a reachable support contact. Confirm local transport pickup details and vehicle/operator information before travel.\n\nTemple festival dates, darshan rules, queue arrangements, and transport conditions can change. Always verify current details with official temple authorities before making a journey.\n\nFor a comfortable pilgrimage with older adults, plan rest breaks, carry prescribed medicines, keep emergency contacts accessible, and avoid tight transfers between temples.";
+    $("query").value="How can I plan a safe Tirumala visit for senior citizens, including darshan and accommodation?";
+    $("topk").value="3";state.step=0;prepare();
+  });
+  prepare();
+})();
+</script>
+</body>
+</html>
